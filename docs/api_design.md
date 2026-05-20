@@ -29,3 +29,39 @@
 
 **POST /api/v1/users/me/library/{game_id}**
 * Суть: Добавить игру в свою библиотеку.
+
+
+
+## 3. API сервиса: Tracking ServiceОтвечает за сессии и лидерборды.
+
+**POST /api/v1/sessions/start*** Суть: Начать игровую сессию. В теле передается `game_id`.
+
+**POST /api/v1/sessions/{session_id}/stop*** Суть: Завершить текущую сессию.
+
+**POST /api/v1/sessions/{session_id}/score*** Суть: Начислить очки за достижение в активной сессии.
+
+**GET /api/v1/leaderboard/{game_id}*** Суть: Получить топ игроков по конкретной игре.
+
+## 4. Межсервисное взаимодействие (gRPC)
+Когда юзер пытается стартовать сессию в Tracking Service, нам нужно проверить, есть ли эта игра у него в библиотеке (которая лежит в User & Catalog Service). 
+
+Для этого описываем gRPC контракт (Protobuf):
+
+```proto
+syntax = "proto3";
+package library;
+
+service LibraryAccessService {
+  rpc CheckGameOwnership (OwnershipRequest) returns (OwnershipResponse);
+}
+
+message OwnershipRequest {
+  string user_id = 1;
+  string game_id = 2;
+}
+
+message OwnershipResponse {
+  bool has_access = 1;
+}
+```
+*Tracking Service выступает как gRPC-клиент, а User & Catalog Service — как gRPC-сервер.*
