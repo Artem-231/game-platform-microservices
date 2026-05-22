@@ -65,3 +65,52 @@ message OwnershipResponse {
 }
 ```
 *Tracking Service выступает как gRPC-клиент, а User & Catalog Service — как gRPC-сервер.*
+
+## 5. Схемы данных (DTO) / Контракты
+
+Пример JSON-тела для старта сессии (`POST /api/v1/sessions/start`):
+```json
+{
+  "game_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+Пример ответа при успешном старте (`201 Created`):
+```json
+{
+  "session_id": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
+  "status": "ACTIVE",
+  "started_at": "2026-05-20T18:30:00Z"
+}
+```
+Пример ответа с ошибкой бизнес-логики (`409 Conflict`):
+```json
+{
+  "error_code": "GAME_NOT_IN_LIBRARY",
+  "message": "You cannot start a session for a game you do not own."
+}
+```
+
+## 6. Sequence Diagram (Сценарий: Старт сессии)
+Здесь показано синхронное взаимодействие между клиентом, двумя микросервисами (по gRPC) и базой данных.
+
+```mermaid
+sequenceDiagram
+    participant Client as Web / Mobile Client
+    participant TS as Tracking Service
+    participant US as User & Catalog Service
+    participant DB as PostgreSQL (Tracking DB)
+
+    Client->>TS: POST /api/v1/sessions/start {game_id}
+    Note over TS: Проверка JWT токена
+    TS->>US: gRPC: CheckGameOwnership(user_id, game_id)
+    
+    alt Игра есть в библиотеке
+        US-->>TS: has_access: true
+        TS->>DB: INSERT INTO session (status: ACTIVE)
+        DB-->>TS: return session_id
+        TS-->>Client: 201 Created {session_id}
+    else Игры нет в библиотеке
+        US-->>TS: has_access: false
+        TS-->>Client: 409 Conflict (GAME_NOT_IN_LIBRARY)
+    end
+```
