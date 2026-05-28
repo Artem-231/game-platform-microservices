@@ -1,0 +1,18 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "GamePlatform.Grpc";
+
+package library;
+
+service LibraryChecker {
+  rpc CheckGameInLibrary (CheckGameRequest) returns (CheckGameResponse);
+}
+
+message CheckGameRequest {
+  string UserId = 1;
+  string GameId = 2;
+}
+
+message CheckGameResponse {
+  bool HasGame = 1;
+}

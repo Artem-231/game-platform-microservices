@@ -24,6 +24,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddControllers();
+builder.Services.AddGrpcClient<GamePlatform.Grpc.LibraryChecker.LibraryCheckerClient>(o =>
+    {
+        o.Address = new Uri("https://localhost:7078"); 
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // Настраиваем Swagger, чтобы в нем можно было вводить JWT токен

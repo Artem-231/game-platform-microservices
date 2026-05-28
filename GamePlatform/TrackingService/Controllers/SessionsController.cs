@@ -13,15 +13,30 @@ namespace TrackingService.Controllers;
 public class SessionsController : ControllerBase
 {
     private readonly TrackingDbContext _db;
+    private readonly GamePlatform.Grpc.LibraryChecker.LibraryCheckerClient _grpcClient;
 
-    public SessionsController(TrackingDbContext db) => _db = db;
+    public SessionsController(TrackingDbContext db, GamePlatform.Grpc.LibraryChecker.LibraryCheckerClient grpcClient)
+    {
+        _db = db;
+        _grpcClient = grpcClient;
+    }
 
+    // Вот этот метод случайно стерся при прошлом копировании
     private Guid GetUserId() => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
     [HttpPost("start")]
     public async Task<IActionResult> StartSession([FromBody] StartSessionRequest req)
     {
         var userId = GetUserId();
+        
+        var grpcResponse = await _grpcClient.CheckGameInLibraryAsync(new GamePlatform.Grpc.CheckGameRequest 
+        { 
+            UserId = userId.ToString(), 
+            GameId = req.GameId.ToString() 
+        });
+        
+        if (!grpcResponse.HasGame)
+            return Forbid(); // Ошибка 403: Доступ запрещен
 
         var activeSession = await _db.Sessions
             .FirstOrDefaultAsync(s => s.UserId == userId && s.Status == "ACTIVE");
@@ -40,8 +55,11 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> StopSession(Guid id)
     {
         var session = await _db.Sessions.FindAsync(id);
-        if (session == null || session.UserId != GetUserId()) return NotFound();
-        if (session.Status != "ACTIVE") return Conflict(new { error_code = "SESSION_NOT_ACTIVE" });
+        if (session == null || session.UserId != GetUserId()) 
+            return NotFound();
+
+        if (session.Status != "ACTIVE") 
+            return Conflict(new { error_code = "SESSION_NOT_ACTIVE" });
 
         session.Status = "COMPLETED";
         session.EndedAt = DateTime.UtcNow;

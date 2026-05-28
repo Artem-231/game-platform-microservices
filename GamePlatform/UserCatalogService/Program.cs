@@ -24,6 +24,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddControllers();
+builder.Services.AddGrpc();
 builder.Services.AddEndpointsApiExplorer();
 
 // Настраиваем Swagger, чтобы в нем можно было вводить JWT токен
@@ -54,5 +55,7 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGrpcService<UserCatalogService.Services.LibraryGrpcService>();
 
 app.Run();
