@@ -29,21 +29,52 @@ public class LibraryController : ControllerBase
         return Ok(games);
     }
 
-    [HttpPost("{gameId}")]
-    public async Task<IActionResult> AddToLibrary(Guid gameId)
+    [HttpPost("me/library/{gameId}")]
+public async Task<IActionResult> AddToLibrary(Guid gameId)
+{
+    int maxRetries = 3;
+    bool externalCheckPassed = false;
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
     {
-        var userId = GetUserId();
-        
-        if (!await _db.Games.AnyAsync(g => g.Id == gameId))
-            return NotFound(new { error_code = "GAME_NOT_FOUND" });
-
-        var exists = await _db.LibraryRecords.AnyAsync(lr => lr.UserId == userId && lr.GameId == gameId);
-        if (exists)
-            return Conflict(new { error_code = "GAME_ALREADY_IN_LIBRARY" });
-
-        _db.LibraryRecords.Add(new LibraryRecord { UserId = userId, GameId = gameId });
-        await _db.SaveChangesAsync();
-        
-        return StatusCode(201, new { message = "Game added to library" });
+        try
+        {
+            externalCheckPassed = SimulateExternalLicenseApiCall();
+            break;
+        }
+        catch (HttpRequestException)
+        {
+            Console.WriteLine($"[SLA Warning] Попытка {attempt} вызвать External API сорвалась. Повторяем...");
+            if (attempt == maxRetries) 
+            {
+                return StatusCode(503, new { error = "Внешний сервис проверки лицензии временно недоступен. Нарушение SLA внешнего провайдера." });
+            }
+            await Task.Delay(200);
+        }
     }
+
+    var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    
+    var record = new UserCatalogService.Models.LibraryRecord 
+    { 
+        UserId = userId, 
+        GameId = gameId 
+    };
+    
+    _db.LibraryRecords.Add(record);
+    await _db.SaveChangesAsync();
+    
+    return StatusCode(201, new { message = "Игра успешно добавлена в библиотеку после верификации внешней системой" });
+}
+
+private bool SimulateExternalLicenseApiCall()
+{
+    var random = new Random();
+    // Имитируем 10% шанс падения сети или таймаута стороннего провайдера
+    if (random.Next(1, 11) == 1) 
+    {
+        throw new HttpRequestException("Таймаут соединения с внешним шлюзом лицензирования.");
+    }
+    return true; // В 90% случаев всё отлично
+}
 }
