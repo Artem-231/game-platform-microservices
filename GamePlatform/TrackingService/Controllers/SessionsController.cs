@@ -28,12 +28,20 @@ public class SessionsController : ControllerBase
     {
         var userId = GetUserId();
 
-        var grpcResponse = await _grpcClient.CheckGameInLibraryAsync(new GamePlatform.Grpc.CheckGameRequest 
-        { 
-            UserId = userId.ToString(), 
-            GameId = req.GameId.ToString() 
-        });
-        
+        GamePlatform.Grpc.CheckGameResponse grpcResponse;
+        try
+        {
+            grpcResponse = await _grpcClient.CheckGameInLibraryAsync(new GamePlatform.Grpc.CheckGameRequest 
+            { 
+                UserId = userId.ToString(), 
+                GameId = req.GameId.ToString() 
+            });
+        }
+        catch (Grpc.Core.RpcException)
+        {
+            return StatusCode(503, new { error_code = "SERVICE_UNAVAILABLE", message = "Сервис проверки каталога временно недоступен. Попробуйте позже." });
+        }
+
         if (!grpcResponse.HasGame)
             return StatusCode(403, new { error_code = "GAME_NOT_IN_LIBRARY", message = "Этой игры нет в вашей библиотеке." });
         
