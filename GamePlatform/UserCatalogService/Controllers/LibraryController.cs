@@ -9,7 +9,7 @@ namespace UserCatalogService.Controllers;
 
 [ApiController]
 [Route("api/v1/users/me/library")]
-[Authorize] // Защищаем ручки токеном
+[Authorize]
 public class LibraryController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -29,7 +29,7 @@ public class LibraryController : ControllerBase
         return Ok(games);
     }
 
-    [HttpPost("me/library/{gameId}")]
+    [HttpPost("{gameId}")]
 public async Task<IActionResult> AddToLibrary(Guid gameId)
 {
     int maxRetries = 3;
@@ -66,6 +66,26 @@ public async Task<IActionResult> AddToLibrary(Guid gameId)
     
     return StatusCode(201, new { message = "Игра успешно добавлена в библиотеку после верификации внешней системой" });
 }
+
+    [HttpDelete("{gameId}")]
+    [Authorize]
+    public async Task<IActionResult> RemoveFromLibrary(Guid gameId)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        var record = await _db.LibraryRecords
+            .FirstOrDefaultAsync(l => l.UserId == userId && l.GameId == gameId);
+
+        if (record == null)
+            return NotFound(new { error_code = "GAME_NOT_IN_LIBRARY", message = "Этой игры нет в вашей библиотеке." });
+
+        _db.LibraryRecords.Remove(record);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Игра успешно удалена из библиотеки." });
+    }
 
 private bool SimulateExternalLicenseApiCall()
 {
