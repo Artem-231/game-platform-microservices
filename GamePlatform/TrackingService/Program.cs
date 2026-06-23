@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TrackingService.Data;
+using Polly;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,17 +25,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddControllers();
+
+var grpcUrl = builder.Configuration["GrpcSettings:UserCatalogUrl"];
+if (string.IsNullOrEmpty(grpcUrl))
+{
+    throw new Exception("Критическая ошибка: не задан GrpcSettings:UserCatalogUrl");
+}
+
 builder.Services.AddGrpcClient<GamePlatform.Grpc.LibraryChecker.LibraryCheckerClient>(o =>
     {
-        o.Address = new Uri("https://localhost:7078"); 
+        o.Address = new Uri(grpcUrl);
     })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {
         ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-    });
+    })
+    .AddTransientHttpErrorPolicy(policy => 
+        policy.WaitAndRetryAsync(3, _ => TimeSpan.FromSeconds(2)))
+    .AddTransientHttpErrorPolicy(policy => 
+        policy.CircuitBreakerAsync(5, TimeSpan.FromSeconds(30)));
+
 builder.Services.AddEndpointsApiExplorer();
 
-// Настраиваем Swagger, чтобы в нем можно было вводить JWT токен
 builder.Services.AddSwaggerGen(c => {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Tracking API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
