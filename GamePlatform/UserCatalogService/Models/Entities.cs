@@ -27,6 +27,28 @@ public class LibraryRecord
 }
 
 // DTOшки для контроллеров
-public record RegisterRequest(string Username, string Email, string Password);
-public record LoginRequest(string Email, string Password);
+public class RegisterRequest
+{
+    [Required(ErrorMessage = "Поле Username обязательно для заполнения.")]
+    [StringLength(50, MinimumLength = 3, ErrorMessage = "Имя пользователя должно быть от 3 до 50 символов.")]
+    public string Username { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле Email обязательно для заполнения.")]
+    [EmailAddress(ErrorMessage = "Некорректный формат Email.")]
+    public string Email { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле Password обязательно для заполнения.")]
+    [MinLength(6, ErrorMessage = "Пароль должен содержать минимум 6 символов.")]
+    public string Password { get; set; } = null!;
+}
+
+public class LoginRequest
+{
+    [Required(ErrorMessage = "Поле Email обязательно для заполнения.")]
+    [EmailAddress(ErrorMessage = "Некорректный формат Email.")]
+    public string Email { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле Password обязательно для заполнения.")]
+    public string Password { get; set; } = null!;
+}
 public record CreateGameRequest(string Title, string Genre, string Developer);
