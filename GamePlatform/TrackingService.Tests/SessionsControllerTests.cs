@@ -127,4 +127,37 @@ public class SessionsControllerTests
 
         Assert.IsType<NotFoundObjectResult>(result);
     }
+    
+    [Fact]
+    public async Task GetActiveSession_ReturnsOkWithSession_WhenActiveSessionExists()
+    {
+        var userId = Guid.NewGuid();
+        await using var context = new TrackingDbContext(_dbContextOptions);
+        context.Sessions.Add(new Session 
+        { 
+            Id = Guid.NewGuid(), 
+            UserId = userId, 
+            Status = "ACTIVE", 
+            StartedAt = DateTime.UtcNow 
+        });
+        await context.SaveChangesAsync();
+
+        var controller = new SessionsController(context, null!);
+        
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        }, "mock"));
+        
+        controller.ControllerContext = new ControllerContext()
+        {
+            HttpContext = new DefaultHttpContext() { User = user }
+        };
+
+        var result = await controller.GetActiveSession();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var session = Assert.IsType<Session>(okResult.Value);
+        Assert.Equal("ACTIVE", session.Status);
+    }
 }
