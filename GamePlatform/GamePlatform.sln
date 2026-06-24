@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UserCatalogService", "UserC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrackingService", "TrackingService\TrackingService.csproj", "{BBD59330-BC97-4202-9AFA-44D743A82728}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrackingService.Tests", "TrackingService.Tests\TrackingService.Tests.csproj", "{561ED1C3-94D5-438B-BEC6-F4C285222E50}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{BBD59330-BC97-4202-9AFA-44D743A82728}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BBD59330-BC97-4202-9AFA-44D743A82728}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BBD59330-BC97-4202-9AFA-44D743A82728}.Release|Any CPU.Build.0 = Release|Any CPU
+		{561ED1C3-94D5-438B-BEC6-F4C285222E50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{561ED1C3-94D5-438B-BEC6-F4C285222E50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{561ED1C3-94D5-438B-BEC6-F4C285222E50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{561ED1C3-94D5-438B-BEC6-F4C285222E50}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
