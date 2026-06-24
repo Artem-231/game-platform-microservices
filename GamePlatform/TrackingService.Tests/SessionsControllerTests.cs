@@ -106,4 +106,89 @@ public class SessionsControllerTests
 
         Assert.IsType<NotFoundResult>(result);
     }
+    
+    [Fact]
+    public async Task GetActiveSession_ReturnsNotFound_WhenNoActiveSessionExists()
+    {
+        await using var context = new TrackingDbContext(_dbContextOptions);
+        var controller = new SessionsController(context, null!);
+        
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+        }, "mock"));
+        
+        controller.ControllerContext = new ControllerContext()
+        {
+            HttpContext = new DefaultHttpContext() { User = user }
+        };
+
+        var result = await controller.GetActiveSession();
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+    
+    [Fact]
+    public async Task GetActiveSession_ReturnsOkWithSession_WhenActiveSessionExists()
+    {
+        var userId = Guid.NewGuid();
+        await using var context = new TrackingDbContext(_dbContextOptions);
+        context.Sessions.Add(new Session 
+        { 
+            Id = Guid.NewGuid(), 
+            UserId = userId, 
+            Status = "ACTIVE", 
+            StartedAt = DateTime.UtcNow 
+        });
+        await context.SaveChangesAsync();
+
+        var controller = new SessionsController(context, null!);
+        
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        }, "mock"));
+        
+        controller.ControllerContext = new ControllerContext()
+        {
+            HttpContext = new DefaultHttpContext() { User = user }
+        };
+
+        var result = await controller.GetActiveSession();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var session = Assert.IsType<Session>(okResult.Value);
+        Assert.Equal("ACTIVE", session.Status);
+    }
+    
+    [Fact]
+    public async Task GetSessionHistory_ReturnsOnlyCompletedSessions_WithCorrectLimit()
+    {
+        var userId = Guid.NewGuid();
+        await using var context = new TrackingDbContext(_dbContextOptions);
+        context.Sessions.Add(new Session { Id = Guid.NewGuid(), UserId = userId, Status = "ACTIVE", StartedAt = DateTime.UtcNow });
+        context.Sessions.Add(new Session { Id = Guid.NewGuid(), UserId = userId, Status = "COMPLETED", StartedAt = DateTime.UtcNow.AddHours(-2), EndedAt = DateTime.UtcNow.AddHours(-1) });
+        context.Sessions.Add(new Session { Id = Guid.NewGuid(), UserId = userId, Status = "COMPLETED", StartedAt = DateTime.UtcNow.AddHours(-4), EndedAt = DateTime.UtcNow.AddHours(-3) });
+        await context.SaveChangesAsync();
+
+        var controller = new SessionsController(context, null!);
+        
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        }, "mock"));
+        
+        controller.ControllerContext = new ControllerContext()
+        {
+            HttpContext = new DefaultHttpContext() { User = user }
+        };
+
+        var result = await controller.GetSessionHistory(limit: 1, offset: 0);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var history = Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
+        
+        Assert.Single(history);
+        Assert.Equal("COMPLETED", history.First().Status);
+    }
 }
