@@ -4,14 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using UserCatalogService.Data;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Подключаем базу
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Настраиваем JWT
 var jwtKey = builder.Configuration["JwtSettings:Secret"];
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
@@ -27,7 +26,6 @@ builder.Services.AddControllers();
 builder.Services.AddGrpc();
 builder.Services.AddEndpointsApiExplorer();
 
-// Настраиваем Swagger, чтобы в нем можно было вводить JWT токен
 builder.Services.AddSwaggerGen(c => {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "User & Catalog API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
@@ -48,6 +46,10 @@ builder.Services.AddSwaggerGen(c => {
 });
 
 var app = builder.Build();
+
+// --- ВШИТЫЕ МЕТРИКИ ПРОМЕТЕУСА ---
+app.UseMetricServer(); // Открывает URL /metrics
+app.UseHttpMetrics();  // Начинает собирать p95 время ответа и HTTP-коды
 
 app.UseSwagger();
 app.UseSwaggerUI();

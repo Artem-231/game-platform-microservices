@@ -5,14 +5,13 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TrackingService.Data;
 using Polly;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Подключаем базу
 builder.Services.AddDbContext<TrackingDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Настраиваем JWT
 var jwtKey = builder.Configuration["JwtSettings:Secret"];
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
@@ -42,7 +41,7 @@ builder.Services.AddGrpcClient<GamePlatform.Grpc.LibraryChecker.LibraryCheckerCl
     })
     .AddTransientHttpErrorPolicy(policy => 
         policy.WaitAndRetryAsync(3, _ => TimeSpan.FromSeconds(2)))
-    .AddTransientHttpErrorPolicy(policy => 
+    .AddTransientHttpErrorPolicy(policy =>
         policy.CircuitBreakerAsync(5, TimeSpan.FromSeconds(30)));
 
 builder.Services.AddEndpointsApiExplorer();
@@ -67,6 +66,10 @@ builder.Services.AddSwaggerGen(c => {
 });
 
 var app = builder.Build();
+
+// --- ВШИТЫЕ МЕТРИКИ ПРОМЕТЕУСА ---
+app.UseMetricServer(); 
+app.UseHttpMetrics();  
 
 app.UseSwagger();
 app.UseSwaggerUI();
