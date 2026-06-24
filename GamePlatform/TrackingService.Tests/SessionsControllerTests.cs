@@ -106,4 +106,25 @@ public class SessionsControllerTests
 
         Assert.IsType<NotFoundResult>(result);
     }
+    
+    [Fact]
+    public async Task GetActiveSession_ReturnsNotFound_WhenNoActiveSessionExists()
+    {
+        await using var context = new TrackingDbContext(_dbContextOptions);
+        var controller = new SessionsController(context, null!);
+        
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+        }, "mock"));
+        
+        controller.ControllerContext = new ControllerContext()
+        {
+            HttpContext = new DefaultHttpContext() { User = user }
+        };
+
+        var result = await controller.GetActiveSession();
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
 }
